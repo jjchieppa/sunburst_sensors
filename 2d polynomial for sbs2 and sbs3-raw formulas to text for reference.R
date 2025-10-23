@@ -1,67 +1,65 @@
 # ============================================================
-# WRITE OUT 2D POLYNOMIAL FORMULAS FOR SBS2 / SBS3 / COMBINED
+# WRITE OUT 2D POLYNOMIAL FORMULAS (SBS2 / SBS3 / COMBINED)
+# directly from model coefficients (index-based extraction)
 # ============================================================
 
-# ---- Setup ----
-dir.create("formulas", showWarnings = FALSE)
+library(dplyr)
 
-outfile <- "formulas/sunburst_polynomial_formulas.txt"
-
-# ---- Coefficients ----
-coefs_sbs2 <- c(
-  a00 = 1.7483570601,
-  a10 = 0.7579895184,
-  a01 = -0.0025557667,
-  a20 = 0.1399634414,
-  a11 = 0.0453932937,
-  a02 = 0.0004011689,
-  a21 = -0.0236484177,
-  a12 = -0.0012093579,
-  a22 = 0.0006531613
+# ---- 1) Pull models from fits_2d ----
+model_sbs2 <- fits_2d$model[[which(unique(df_long$Sensor) == "SBS2")]]
+model_sbs3 <- fits_2d$model[[which(unique(df_long$Sensor) == "SBS3")]]
+model_combined <- lm(
+  logpCO2 ~ poly(RCO2, 2, raw = TRUE) * poly(Temp_C, 2, raw = TRUE),
+  data = df_long
 )
 
-coefs_sbs3 <- c(
-  a00 = 1.8123,
-  a10 = 0.7321,
-  a01 = -0.0028,
-  a20 = 0.1425,
-  a11 = 0.0469,
-  a02 = 0.00039,
-  a21 = -0.024,
-  a12 = -0.0011,
-  a22 = 0.00065
-)
-
-coefs_combined <- c(
-  a00 = 1.7804,
-  a10 = 0.7498,
-  a01 = -0.0026,
-  a20 = 0.1412,
-  a11 = 0.0457,
-  a02 = 0.00040,
-  a21 = -0.0239,
-  a12 = -0.00120,
-  a22 = 0.00065
-)
-
-# ---- Helper function to format polynomial text ----
-make_formula <- function(label, coefs) {
-  sprintf(
-    "==============================\n%s MODEL\n==============================\nlog10(pCO2) = %.10f + %.10f*R + %.10f*T + %.10f*R^2 + %.10f*R*T + %.10f*T^2 + %.10f*R^2*T + %.10f*R*T^2 + %.10f*R^2*T^2\npCO2 = 10^(that)\n\n",
-    label,
-    coefs["a00"], coefs["a10"], coefs["a01"], coefs["a20"], coefs["a11"],
-    coefs["a02"], coefs["a21"], coefs["a12"], coefs["a22"]
+# ---- 2) Helper: extract coefficients into 9-index vector ----
+coefs_to_a <- function(mod) {
+  cf <- coef(mod)
+  g <- function(nm) if (nm %in% names(cf)) cf[[nm]] else 0
+  c(
+    a00 = g("(Intercept)"),
+    a10 = g("poly(RCO2, 2, raw = TRUE)1"),
+    a20 = g("poly(RCO2, 2, raw = TRUE)2"),
+    a01 = g("poly(Temp_C, 2, raw = TRUE)1"),
+    a02 = g("poly(Temp_C, 2, raw = TRUE)2"),
+    a11 = g("poly(RCO2, 2, raw = TRUE)1:poly(Temp_C, 2, raw = TRUE)1"),
+    a21 = g("poly(RCO2, 2, raw = TRUE)2:poly(Temp_C, 2, raw = TRUE)1"),
+    a12 = g("poly(RCO2, 2, raw = TRUE)1:poly(Temp_C, 2, raw = TRUE)2"),
+    a22 = g("poly(RCO2, 2, raw = TRUE)2:poly(Temp_C, 2, raw = TRUE)2")
   )
 }
 
-# ---- Build content ----
+a_sbs2     <- coefs_to_a(model_sbs2)
+a_sbs3     <- coefs_to_a(model_sbs3)
+a_combined <- coefs_to_a(model_combined)
+
+# ---- 3) Helper: formatted polynomial string using indexing ----
+make_formula <- function(label, a) {
+  fp <- function(x) sprintf("%.12f", x)
+  sprintf(
+    "==============================
+%s MODEL
+==============================
+log10(pCO2) = %s + %s*R + %s*T + %s*R^2 + %s*R*T + %s*T^2 + %s*R^2*T + %s*R*T^2 + %s*R^2*T^2
+pCO2 = 10^(that)
+
+",
+    label,
+    fp(a[1]), fp(a[2]), fp(a[4]), fp(a[3]), fp(a[6]),
+    fp(a[5]), fp(a[7]), fp(a[8]), fp(a[9])
+  )
+}
+
+# ---- 4) Build + write to file ----
+dir.create("formulas", showWarnings = FALSE)
+outfile <- "formulas/sunburst_polynomial_formulas.txt"
+
 text_content <- paste0(
-  make_formula("SBS2", coefs_sbs2),
-  make_formula("SBS3", coefs_sbs3),
-  make_formula("Combined", coefs_combined)
+  make_formula("SBS2", a_sbs2),
+  make_formula("SBS3", a_sbs3),
+  make_formula("Combined", a_combined)
 )
 
-# ---- Write to text file ----
 writeLines(text_content, outfile)
-
 message("✅ Formulas written to: ", outfile)
