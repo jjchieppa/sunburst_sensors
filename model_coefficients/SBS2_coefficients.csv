@@ -1,0 +1,10 @@
+"term","estimate"
+"(Intercept)",1.55388938687603
+"poly(RCO2, 2, raw = TRUE)1",1.15120920096611
+"poly(RCO2, 2, raw = TRUE)2",-0.0550644171374004
+"poly(Temp_C, 2, raw = TRUE)1",0.0286193160299179
+"poly(Temp_C, 2, raw = TRUE)2",-0.000532223051700213
+"poly(RCO2, 2, raw = TRUE)1:poly(Temp_C, 2, raw = TRUE)1",-0.0184673830458943
+"poly(RCO2, 2, raw = TRUE)2:poly(Temp_C, 2, raw = TRUE)1",0.00844343946763915
+"poly(RCO2, 2, raw = TRUE)1:poly(Temp_C, 2, raw = TRUE)2",0.000734604698837271
+"poly(RCO2, 2, raw = TRUE)2:poly(Temp_C, 2, raw = TRUE)2",-0.000336681022620897
